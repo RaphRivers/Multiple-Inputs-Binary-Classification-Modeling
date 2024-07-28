@@ -62,9 +62,9 @@ This project provides a comprehensive framework for multiple input binary classi
 ## Contributing
 Contributions to this project are welcome. Please feel free to fork the repository, submit pull requests, or open issues for discussion.
 
-Repository Structure
-data/: Contains the dataset used for training and testing the model.
-notebooks/: Jupyter notebooks with detailed analysis and model training steps.
-src/: Source code for data preprocessing, model training, and evaluation.
-docs/: Documentation and additional resources related to the project.
-README.md: Project overview and instructions.
+## Repository Structure
+- data/: Contains the dataset used for training and testing the model.
+- notebooks/: Jupyter notebooks with detailed analysis and model training steps.
+- src/: Source code for data preprocessing, model training, and evaluation.
+- docs/: Documentation and additional resources related to the project.
+- README.md: Project overview and instructions.
