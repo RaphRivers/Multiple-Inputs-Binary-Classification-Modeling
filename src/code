@@ -1,0 +1,496 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Multiple Inputs Binary Classification Modeling 
+# ## A Machine Learning Case Study 
+# ## Fitting and Assessing the Performance of Multiple Classification Models
+# This machine learning project is focused on binary classification using multiple input features. It aims to classify data into two distinct categories based on various input attributes. Multiple input binary classification modeling is a machine learning approach where a model is trained to classify data into two distinct categories (binary classification) based on multiple input features. In this context, "multiple inputs" means that the model uses more than one feature or attribute from the data to make a prediction.
+# 
+# Reference: "Fitting and assessing the performance of multiple CLASSIFICATION models" by Dr. Dmitriy Babichenko
+# 
+# Dataset: Binary Classification.csv 
+# 
+# Source: 
+# University of Pittsburg SOI"
+
+# ## Import Modules
+# Import data manipulation and machine learning modules
+
+# In[1]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.formula.api as smf
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_auc_score
+
+
+# In[2]:
+
+
+# Suppress future warnings
+import warnings
+warnings.filterwarnings("ignore")
+
+
+# ## Read in the data
+
+# In[3]:
+
+
+df = pd.read_csv('sample_dataset.csv')
+df.head()
+
+
+# In[4]:
+
+
+# Preview the dataset info
+df.info()
+
+
+# In[5]:
+
+
+# Check dataset for missings
+df.isna().sum()
+
+
+# In[6]:
+
+
+# Check the number of unique values for each variable
+df.nunique()
+
+
+# In[7]:
+
+
+# Look at the data types
+df.dtypes
+
+
+# There are no missing data points. We have 4 continuous variables and 2 categorical variables where one of the categorical variable is an integer with two unique values. Since we will be classifying the output variable let's check the counts and proportion of the unique values.
+
+# In[8]:
+
+
+# Check output count
+df.output.value_counts()
+
+
+# In[9]:
+
+
+# Check the output proportion
+df.output.value_counts(normalize=True)
+
+
+# The output consists of two unique values, 0 and 1, represented as binary indicators. Output value 1 is the Event, which occurs 34% of the time, and output value 0 is the Non-Event, which occurs 66% of the time. By default, the Event occurs less frequently than the Non-Event.
+
+# In[10]:
+
+
+# Verify the observed proportion of the event and non-event
+print('Event:', df.output.mean() * 100,'%' )
+print('Non Event:', (1 - df.output.mean()) * 100,'%')
+
+
+# Why is this important? The reason why this is so critcally important is because when we calculate the model accuracy we want to see if it is better than the observed proportion of the event.
+
+# In[11]:
+
+
+# Explore the categorical input using a bar chart
+sns.catplot(x='input_5', data=df, kind='count')
+plt.show()
+
+
+# Notice `b` have a higher frequency that the values `a` and `c`. But we don't have a very large disproportionate difference from the two.
+
+# Let's check standard divaition, minimum and maximum inputs bounds of the continuous input. This is important because we want to know the data bound that we will use to fit the model.
+
+# In[12]:
+
+
+# Summarise the dataset 
+df.describe()
+
+
+# Here we can see that the std (scale) of the features are non negative and closer to 1 as such we don't have to worry about standardzing. Next let's fit the logistics model.
+
+# Let's define a function that will allow us to fit and calculate the training set performance for any formula.
+
+# In[13]:
+
+
+# Funtion to fit and access logistic model
+def fit_access_logit( model_name, a_formula, training_data, threshold ):
+    fit_model = smf.logit( formula = a_formula, data = training_data).fit() # fit any model
+    
+    # Make a hard copy of the training set dataset
+    training_set_copy = training_data.copy() 
+    
+    # Calculate training set predictive probability
+    training_set_copy['pred_probability'] = fit_model.predict( training_data )
+     
+
+    # Convert predictive probability into classification
+    training_set_copy['pred_class'] = np.where( training_set_copy.pred_probability > threshold, 1, 0 ) 
+
+    # Apply the confusion matrix function to pull out events from the output and convert to a 2D array
+    TN, FP, FN, TP, = confusion_matrix( training_set_copy.output.to_numpy(), training_set_copy.pred_class.to_numpy() ).ravel()
+
+    # Calculate the Prediction Accuracy
+    Accuracy = (TN + TP) / (TN + FP + FN + TP)
+
+    # Calculate the Prediction Sensitivity
+    Sensitivity = (TP) / (TP + FN)
+
+    # Calculate the Specificity
+    Specificity = (TN / (TN + FP))
+
+    # Calculate the False Positive Rate (FPR)
+    FPR = 1 - Specificity
+
+    # Examine the behavior for any threshold value and convert ROC curve to quantitative metric
+    ROC_AUC = roc_auc_score(training_set_copy.output.to_numpy(), training_set_copy.pred_probability.to_numpy() )
+
+    # Store the result in a dictionary
+    result_dict = {'model_name': model_name,
+                  'model_formula': a_formula,
+                  'num_coefficients': len(fit_model.params),
+                  'threshold': threshold,
+                  'Accuracy': Accuracy,
+                  'Sensitivity': Sensitivity,
+                  'Specificity': Specificity,
+                  'FPR': FPR,
+                  'ROC_AUC': ROC_AUC}
+    # Return the dictionary as dataframe and set the index because each value is a scalar value
+    return pd.DataFrame( result_dict, index=[0] )
+                  
+
+
+# In[14]:
+
+
+# Test function with a simple linear model
+fit_access_logit(0, 'output ~ 1', training_data=df, threshold=0.5)
+
+
+# Next let's create a list of models with different formulas that we can use to fit. 
+
+# In[15]:
+
+
+model_list = ['output ~ 1',
+                'output ~ input_5',
+                'output ~ input_1 + input_2 + input_3 + input_4',
+                'output ~ input_1 + input_2 + input_3 + input_4 + input_5',
+                'output ~ input_5 * (input_1 + input_2 + input_3 + input_4)',
+                'output ~ (input_1 + input_2 + input_3 + input_4) ** 2',
+                'output ~ input_1 + input_2 + input_3 + input_4 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2)',
+                'output ~ input_5 + input_1 + input_2 + input_3 + input_4 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2)',
+                'output ~ input_5 * (input_1 + input_2 + input_3 + input_4 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2))',
+                'output ~ input_5 + ( (input_1 + input_2 + input_3 + input_4)**2 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2))',
+                'output ~ input_5 * ( (input_1 + input_2 + input_3 + input_4)**2 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2))',
+                'output ~ input_5 + (input_1 + input_2 + input_3 + input_4)**3',
+                'output ~ input_5 + (input_1 + input_2 + input_3 + input_4)**4',
+                'output ~ (input_1 + input_2 + input_3 + input_4 + input_5)**3',
+                'output ~ (input_1 + input_2 + input_3 + input_4 + input_5)**4',
+                'output ~ input_5 * ( (input_1 + input_2 + input_3 + input_4)**3 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2) + np.power(input_1,3) + np.power(input_2,3) + np.power(input_3,3) + np.power(input_4,3) )',
+                'output ~ input_5 * ( (input_1 + input_2 + input_3 + input_4)**3 + np.power(input_1,2) + np.power(input_2,2) + np.power(input_3,2) + np.power(input_4,2) + np.power(input_1,3) + np.power(input_2,3) + np.power(input_3,3) + np.power(input_4,3) + np.power(input_1,4) + np.power(input_2,4) + np.power(input_3,4) + np.power(input_4,4) )']
+
+
+# Now, every element in this list defines a model. To use any model, all you have to do is reference the list position. For example, let's reference the eleventh element.
+
+# In[16]:
+
+
+# Display the 11th model in the list
+model_list[11]
+
+
+# Now let's use a for loop to iterate over all model formulas in the list and apply the fit and access logistic fuinction to each one. Storing the result in to a resukts variable
+
+# In[17]:
+
+
+# Initialize result list
+result_list = []
+
+# Iterate over model list and apply the fit function
+for m in range(len(model_list)):
+    result_list.append(fit_access_logit( m, model_list[m], training_data = df, threshold=0.5 ))
+    
+
+
+# All the models in our list have been successfully fitted, and the results have been displayed. Now, we get a fit for each element in our model list. Now, let's verify how many models are fitted with all the set parameters that I defined above in the dictionary.
+
+# In[18]:
+
+
+# Check the number of models fitted
+len(result_list)
+
+
+# Now we can select the model result for each element to view or combine all the result into a single dataframe
+
+# In[19]:
+
+
+# show a single fitted model result
+result_list[3]
+
+
+# In[20]:
+
+
+# COntatenate all models result into a single dataframe
+model_results_df = pd.concat(result_list, ignore_index=True)
+
+
+# In[21]:
+
+
+# Show model result dataframe
+model_results_df
+
+
+# As you can see, we now have different models with many performance metrics, which we can use to extract the model with the best training data. For example, owing to the nature of the modeling application you are working on, we can sort the models by accuracy, sensitivity, specificity, ROC_AUC, etc, to find which model is the best. Let's sort by Accuracy first. 
+
+# In[22]:
+
+
+# Sort model by accuracy in descending order
+model_results_df.sort_values(by=['Accuracy'], ascending=False)
+
+
+# Here, the model at the top of the list is the one with the highest accuracy. You can see it has the most coefficients and the most complex formula. Its training set accuracy is 81%. However, what if I sort by ROC_AUC? Accuracy requires one threshold, while ROC_AUC tries out several thresholds defined in its function. Let's see that...
+
+# In[23]:
+
+
+# Sort model by accuracy in descending order
+model_results_df.sort_values(by=['ROC_AUC'], ascending=False)
+
+
+# Sorting by ROC_AUC still tells me that our best-fitted model is `model number 16` with 81% accuracy and 81 coefficients. Essentially, the training set performance is getting better as the number of coefficients increases. As such we can confirm that with a scatter plot.
+
+# In[24]:
+
+
+# Plot selected training set model using a scatter plot
+sns.relplot(data = model_results_df, x='num_coefficients', y='Accuracy')
+plt.show()
+
+
+# You can see as the number of coefficient is increasing the accuracy is increasing. Let check with ROC_AUC
+
+# In[25]:
+
+
+sns.relplot(data = model_results_df, x='num_coefficients', y='ROC_AUC')
+plt.show()
+
+
+# As you can see, the plot isn't exactly the same, but it still has the same increasing pattern. By including so many features using polynomials and interactions in our model, we have generated more complex features, so there are 80 plus unknowns that directly help to improve the training set performance. Finally, let's visualize the entire ROC_AUC curve for each model. This is how we can confirm that we have identified the best complex model from our training set. For this, we will define a function that returns the complete ROC curve for each model.
+
+# In[26]:
+
+
+# Define ROC Curve model viz function - NO threshold
+def roc_model_viz( model_name, a_formula, training_data):
+    fit_model = smf.logit( formula = a_formula, data = training_data).fit() # fit any model
+    
+    # Make a hard copy of the training set dataset
+    training_set = training_data.copy() 
+    
+    # Calculate training set predictive probability
+    training_set['pred_probability'] = fit_model.predict( training_data )
+     
+    # Get the FPR ( False Positive Rate), TPR (Tru Positive Rate) and threshold from ROC
+    fpr, tpr, threshold = roc_curve( training_set.output.to_numpy(), training_set.pred_probability.to_numpy() ) 
+    
+    # Create a roc result dictionary as dataframe 
+    roc_result_df = pd.DataFrame( {'tpr': tpr,
+                         'fpr': fpr,
+                         'threshold': threshold} )
+    # Add model name and formula columns
+    roc_result_df['model_name'] = model_name
+    roc_result_df['model_formula'] = a_formula
+
+    # Return the ROC datafrme
+    return roc_result_df
+
+
+# In[27]:
+
+
+# Now make a new roc model list and iterate over the model list 
+roc_result_list = []
+
+# Iterate over the model list 
+for m in range(len(model_list)):
+    roc_result_list.append(roc_model_viz( m, model_list[m], training_data = df))
+
+
+# In[28]:
+
+
+# Concatenate the ROC fitted list and assign it to the roc results df
+roc_result_df = pd.concat(roc_result_list, ignore_index=True)
+
+
+# In[29]:
+
+
+# View the ROC list dataframe info
+roc_result_df.info()
+
+
+# Let's visualize the ROC curve for each model. Before we do this, notice that the model name column is an integer. Let's convert it to a categorical variable so we can distinguish the different models in the visualization.
+
+# In[30]:
+
+
+# Convert model name column to category
+roc_result_df['model_name'] = roc_result_df['model_name'].astype( 'category' )
+
+
+# In[31]:
+
+
+# Visualise ROC Curve
+sns.relplot(data =  roc_result_df, x='fpr', y='tpr', hue='model_name',
+           kind='line', estimator=None, units='model_name')
+plt.show()
+
+
+# We can see that the ROC curve is pretty close. Let's use facets to expand the plots into five columns
+
+# In[32]:
+
+
+# Visualize the ROC curve to confirm the best-fit model is model number 16
+sns.relplot(data = roc_result_df, x='fpr', y='tpr', hue='model_name',
+           kind='line', estimator=None, units='model_name',
+           col='model_name', col_wrap=3)
+plt.show()
+
+
+# ## Models Performance Summary
+# According to the training set, the data used to fit the models with the most unknown coefficients or slope estimates is the best model. It does seem that the more unknowns we introduce, the more accurate the model is.
+
+# ## Finally, let Visulize Predictions 
+# Let's make a prediction grid to visualize the predicted event probability for different input combinations in our dataset. I will focus on the relationship between the event probability and `input_1` for different values of `input_2` and the categorical input.
+
+# In[33]:
+
+
+# Preview our primary dataset
+df.head()
+
+
+# In[34]:
+
+
+# Create prediction input grid using 101 evenly space values for the features min and max and mean values
+pred_grid = pd.DataFrame([ (input_1, input_2, input_3, input_4, input_5) for input_1 in np.linspace(df.input_1.min(), df.input_1.max(), num=101)
+                                                 for input_2 in np.linspace(df.input_2.min(), df.input_2.max(), num=9)
+                                                 for input_3 in [df.input_3.mean()]
+                                                 for input_4 in [df.input_4.mean()]
+                                                 for input_5 in df.input_5.unique() ],
+                          columns=['input_1', 'input_2', 'input_3', 'input_4', 'input_5'])
+
+
+# In[35]:
+
+
+# Create a df for visualizing the model prediction 
+# Make a deep copy of the input grid training set
+pred_df_viz = pred_grid.copy()
+
+
+# In[36]:
+
+
+# Check the input grid training data for prediction
+pred_df_viz.head()
+
+
+# In[37]:
+
+
+# Check the dimension
+pred_df_viz.shape
+
+
+# In[38]:
+
+
+# Check the number of unique values
+pred_df_viz.nunique()
+
+
+# Let's fit our best model using the model list
+
+# In[39]:
+
+
+# select the most complex model
+model_list[16]
+
+
+# In[40]:
+
+
+# Fit the complet formula
+best_model_fit = smf.logit(formula=model_list[16], data=df).fit()
+
+
+# In[41]:
+
+
+# Check the estimates
+best_model_fit.params
+
+
+# In[42]:
+
+
+# Check all the slopes that are estimated
+best_model_fit.params.to_numpy()
+
+
+# In[43]:
+
+
+# Add a predicted probability column 
+pred_df_viz['pred_prob_best_model'] = best_model_fit.predict( pred_grid )
+
+
+# In[44]:
+
+
+pred_df_viz
+
+
+# ### Visualize the best-fit model 
+# Visualize the relationship with respect to `input_5` and `input_2`
+
+# In[45]:
+
+
+sns.relplot(data = pred_df_viz, x='input_1', y='pred_prob_best_model', hue='input_5',
+           col='input_2', kind='line', estimator=None, units='input_5', col_wrap=3)
+plt.show()
+
+
+# You can see that the probability of the event is the green line with respect to input_2. It start at 0, it increses rapidly and flat line near 1  and then decreases rapidly again as input_1 is changing. However depending on the value of input_2, that relationship with respect to input_5 value a will change. If look at the green curve across the different facets, unitl input_2 becomes positive the preddcitive probability will always be 0 with respect to input_1 and input_5. This confirm that model number 16 is still the best according to all of my traininig set matrics. Because as you can see it has the most numer of features, the most number of unknowns and capable of creating coplex visualization relationship and our preformance matrix says it is the best.
+# 
+# Overall I cannot conclude definitely that it is the best until I test it on other tools. Please feel free to contribute to this case study. 
