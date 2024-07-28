@@ -29,11 +29,11 @@ The model utilizes several features, which could be numerical (e.g., age, salary
 Data Collection:
 Collect data with multiple features and a binary target variable.
 
-##Data Preprocessing:
+## Data Preprocessing:
 
-**Cleaning:** Handle missing values, remove duplicates, and correct errors.
-**Feature Engineering:** Transform existing features.
-**Normalization/Standardization:** The dataset's numerical features are consistent and do not require standardization.
+- **Cleaning:** Handle missing values, remove duplicates, and correct errors.
+- **Feature Engineering:** Transform existing features.
+- **Normalization/Standardization:** The dataset's numerical features are consistent and do not require standardization.
 
 ## Model Selection:
 Choose appropriate algorithms like Logistic Regression for binary classification.
