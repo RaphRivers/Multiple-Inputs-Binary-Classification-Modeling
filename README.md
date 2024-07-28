@@ -33,7 +33,7 @@ Collect data with multiple features and a binary target variable.
 
 **Cleaning:** Handle missing values, remove duplicates, and correct errors.
 **Feature Engineering:** Transform existing features.
-**Normalization/Standardization:** The dataset numerical features is consistent and does not require standardization.
+**Normalization/Standardization:** The dataset's numerical features are consistent and do not require standardization.
 
 ## Model Selection:
 Choose appropriate algorithms like Logistic Regression for binary classification.
@@ -44,7 +44,7 @@ Fit the model to the training data, learning the relationship between input feat
 ## Model Evaluation:
 Assess the model's performance using metrics such as accuracy, specificity, sensitivity, threshold, and ROC-AUC.
 
-##Prediction:
+## Prediction:
 Use the trained model to classify new instances.
 
 ## Performance Metrics
